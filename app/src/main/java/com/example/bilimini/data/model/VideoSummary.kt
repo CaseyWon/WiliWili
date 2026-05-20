@@ -8,4 +8,6 @@ data class VideoSummary(
     val durationText: String,
     val playText: String,
     val badge: String? = null,
+    val durationSeconds: Long? = null,
+    val playCount: Long? = null,
 )

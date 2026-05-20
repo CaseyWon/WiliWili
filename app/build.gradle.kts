@@ -6,13 +6,17 @@ plugins {
 
 android {
     namespace = "com.example.bilimini"
-    compileSdk = 35
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
     buildToolsVersion = "36.1.0"
 
     defaultConfig {
         applicationId = "com.example.bilimini"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
 
@@ -49,8 +53,16 @@ android {
     }
 }
 
+val exportDebugApk by tasks.registering(Copy::class) {
+    dependsOn("assembleDebug")
+    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
+    into(layout.buildDirectory.dir("outputs/wiliwili"))
+    rename("app-debug.apk", "WiliWili.apk")
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
+    val media3Version = "1.4.1"
 
     implementation(composeBom)
     androidTestImplementation(composeBom)
@@ -65,6 +77,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.webkit:webkit:1.11.0")
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.security:security-crypto-ktx:1.1.0-alpha06")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

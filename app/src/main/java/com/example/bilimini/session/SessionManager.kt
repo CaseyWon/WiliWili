@@ -68,6 +68,17 @@ class SessionManager(context: Context) {
 
     fun getCookieHeader(): String = _sessionState.value.cookieHeader
 
+    fun getCookieValue(name: String): String? {
+        return _sessionState.value.cookieHeader
+            .split(";")
+            .map { it.trim() }
+            .firstOrNull { it.startsWith("$name=") }
+            ?.substringAfter("=")
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    fun getCsrfToken(): String? = getCookieValue("bili_jct")
+
     private fun normalizeCookies(rawCookies: List<String>): String {
         val cookieMap = linkedMapOf<String, String>()
         rawCookies

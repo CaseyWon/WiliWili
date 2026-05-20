@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.bilimini.data.model.UserProfile
 import com.example.bilimini.data.repository.BiliRepository
 import com.example.bilimini.session.SessionManager
+import com.example.bilimini.ui.components.PageBanner
 import com.example.bilimini.ui.components.RemoteImage
 
 @Composable
@@ -69,27 +70,37 @@ fun ProfileScreen(
 private fun LoggedOutPane(
     onLoginClick: () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        PageBanner(
+            title = "\u6211\u7684",
+            showWordmark = true,
+        )
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 1.dp,
         ) {
-            Text(
-                text = "Me",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            Text(
-                text = "You are not signed in. The MVP uses an embedded web login so the app does not need to collect your password directly.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onLoginClick) {
-                Text("Sign in")
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "\u5f53\u524d\u8fd8\u6ca1\u6709\u767b\u5f55",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "\u4f7f\u7528\u7ad9\u5185\u7f51\u9875\u767b\u5f55\uff0c\u4fdd\u6301\u57fa\u7840\u529f\u80fd\u4e0d\u53d8\u3002",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(onClick = onLoginClick) {
+                    Text("\u53bb\u767b\u5f55")
+                }
             }
         }
     }
@@ -100,60 +111,62 @@ private fun LoggedInPane(
     profile: UserProfile?,
     onLogout: () -> Unit,
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        PageBanner(
+            title = "\u6211\u7684",
+            showWordmark = true,
+        )
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 1.dp,
         ) {
-            Text(
-                text = "Me",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            if (profile == null) {
-                Text(
-                    text = "You appear signed in, but the profile call returned no data. Cookies may be expired, or the response shape may have changed.",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            } else {
-                RemoteImage(
-                    imageUrl = profile.avatarUrl,
-                    contentDescription = profile.name,
-                    modifier = Modifier
-                        .size(88.dp)
-                        .clip(CircleShape),
-                )
-                Text(
-                    text = profile.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = "UID ${profile.mid} | Lv.${profile.level ?: "--"}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                profile.sign?.takeIf { it.isNotBlank() }?.let { sign ->
-                    Surface(
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                    ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (profile == null) {
+                    Text(
+                        text = "\u5df2\u8bc6\u522b\u5230\u767b\u5f55\u6001\uff0c\u4f46\u6682\u65f6\u6ca1\u6709\u8bfb\u5230\u8d44\u6599\u3002",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                } else {
+                    RemoteImage(
+                        imageUrl = profile.avatarUrl,
+                        contentDescription = profile.name,
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape),
+                    )
+                    Text(
+                        text = profile.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    Text(
+                        text = "UID ${profile.mid}  \u2022  Lv.${profile.level ?: "--"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    profile.sign?.takeIf { it.isNotBlank() }?.let { sign ->
                         Text(
                             text = sign,
-                            modifier = Modifier.padding(14.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Text(
+                        text = "\u786c\u5e01\u4f59\u989d\uff1a${profile.coins ?: "--"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
-                Text(
-                    text = "Coins ${profile.coins ?: "--"}",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-            Button(onClick = onLogout) {
-                Text("Sign out")
+                Button(onClick = onLogout) {
+                    Text("\u9000\u51fa\u767b\u5f55")
+                }
             }
         }
     }

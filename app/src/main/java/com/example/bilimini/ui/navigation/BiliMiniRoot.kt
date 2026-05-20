@@ -3,6 +3,7 @@ package com.example.bilimini.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.DynamicFeed
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -23,10 +24,12 @@ import androidx.navigation.navArgument
 import com.example.bilimini.AppContainer
 import com.example.bilimini.ui.screen.auth.LoginScreen
 import com.example.bilimini.ui.screen.detail.DetailScreen
+import com.example.bilimini.ui.screen.dynamic.DynamicScreen
 import com.example.bilimini.ui.screen.feed.FeedScreen
 import com.example.bilimini.ui.screen.player.PlayerScreen
 import com.example.bilimini.ui.screen.profile.ProfileScreen
 import com.example.bilimini.ui.screen.search.SearchScreen
+import com.example.bilimini.ui.screen.space.UserSpaceScreen
 
 private data class BottomNavItem(
     val route: String,
@@ -42,23 +45,29 @@ fun BiliMiniRoot(container: AppContainer) {
     val bottomItems = listOf(
         BottomNavItem(
             route = AppDestination.Feed.route,
-            label = "Feed",
-            icon = { Icon(Icons.Rounded.Home, contentDescription = "Feed") },
+            label = "\u9996\u9875",
+            icon = { Icon(Icons.Rounded.Home, contentDescription = "\u9996\u9875") },
+        ),
+        BottomNavItem(
+            route = AppDestination.Dynamic.route,
+            label = "\u52a8\u6001",
+            icon = { Icon(Icons.Rounded.DynamicFeed, contentDescription = "\u52a8\u6001") },
         ),
         BottomNavItem(
             route = AppDestination.Search.route,
-            label = "Search",
-            icon = { Icon(Icons.Rounded.Search, contentDescription = "Search") },
+            label = "\u641c\u7d22",
+            icon = { Icon(Icons.Rounded.Search, contentDescription = "\u641c\u7d22") },
         ),
         BottomNavItem(
             route = AppDestination.Profile.route,
-            label = "Me",
-            icon = { Icon(Icons.Rounded.AccountCircle, contentDescription = "Me") },
+            label = "\u6211\u7684",
+            icon = { Icon(Icons.Rounded.AccountCircle, contentDescription = "\u6211\u7684") },
         ),
     )
     val showBottomBar = currentDestination?.route in bottomItems.map { it.route }
 
     Scaffold(
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
@@ -95,6 +104,19 @@ fun BiliMiniRoot(container: AppContainer) {
                     },
                 )
             }
+            composable(AppDestination.Dynamic.route) {
+                DynamicScreen(
+                    repository = container.repository,
+                    sessionManager = container.sessionManager,
+                    onLoginClick = { navController.navigate(AppDestination.Login.route) },
+                    onOpenVideo = { bvid ->
+                        navController.navigate(AppDestination.Detail.createRoute(bvid))
+                    },
+                    onOpenUserSpace = { mid ->
+                        navController.navigate(AppDestination.UserSpace.createRoute(mid))
+                    },
+                )
+            }
             composable(AppDestination.Search.route) {
                 SearchScreen(
                     repository = container.repository,
@@ -118,6 +140,23 @@ fun BiliMiniRoot(container: AppContainer) {
                 )
             }
             composable(
+                route = AppDestination.UserSpace.route,
+                arguments = listOf(navArgument("mid") { type = NavType.LongType }),
+            ) { entry ->
+                val mid = entry.arguments?.getLong("mid") ?: 0L
+                UserSpaceScreen(
+                    mid = mid,
+                    repository = container.repository,
+                    onBack = { navController.popBackStack() },
+                    onOpenVideo = { bvid ->
+                        navController.navigate(AppDestination.Detail.createRoute(bvid))
+                    },
+                    onOpenUserSpace = { targetMid ->
+                        navController.navigate(AppDestination.UserSpace.createRoute(targetMid))
+                    },
+                )
+            }
+            composable(
                 route = AppDestination.Detail.route,
                 arguments = listOf(navArgument("bvid") { type = NavType.StringType }),
             ) { entry ->
@@ -137,8 +176,8 @@ fun BiliMiniRoot(container: AppContainer) {
             ) { entry ->
                 val bvid = entry.arguments?.getString("bvid").orEmpty()
                 PlayerScreen(
-                    pageUrl = container.repository.buildVideoPageUrl(bvid),
-                    sessionManager = container.sessionManager,
+                    bvid = bvid,
+                    repository = container.repository,
                     onBack = { navController.popBackStack() },
                 )
             }
