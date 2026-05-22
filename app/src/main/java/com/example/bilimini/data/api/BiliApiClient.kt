@@ -33,7 +33,20 @@ class BiliApiClient(
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> {
-            return cookieStore.filter { it.matches(url) }
+            val result = cookieStore.filter { it.matches(url) }.toMutableList()
+            val header = sessionManager.getCookieHeader()
+            if (header.isNotBlank()) {
+                header.split(";")
+                    .map { it.trim() }
+                    .filter { it.contains("=") }
+                    .forEach { pair ->
+                        val name = pair.substringBefore("=").trim()
+                        if (result.none { it.name == name }) {
+                            Cookie.parse(url, "$pair; Domain=.bilibili.com; Path=/")?.let(result::add)
+                        }
+                    }
+            }
+            return result
         }
     }
 
@@ -223,7 +236,7 @@ class BiliApiClient(
 
     private fun requestBuilder(
         url: String,
-        authenticated: Boolean,
+        authenticated: Boolean, // kept for API clarity; cookies are now handled by CookieJar
         mobileUserAgent: Boolean = false,
         referer: String = "https://www.bilibili.com/",
         accept: String = "application/json, text/plain, */*",
@@ -233,14 +246,6 @@ class BiliApiClient(
             .header("User-Agent", if (mobileUserAgent) MOBILE_USER_AGENT else DESKTOP_USER_AGENT)
             .header("Referer", referer)
             .header("Accept", accept)
-            .apply {
-                if (authenticated) {
-                    val cookieHeader = sessionManager.getCookieHeader()
-                    if (cookieHeader.isNotBlank()) {
-                        header("Cookie", cookieHeader)
-                    }
-                }
-            }
     }
 
     private companion object {
