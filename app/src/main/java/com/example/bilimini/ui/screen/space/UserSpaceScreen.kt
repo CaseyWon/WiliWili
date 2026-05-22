@@ -1,6 +1,5 @@
 package com.example.bilimini.ui.screen.space
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,10 +28,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.bilimini.data.model.DynamicItem
@@ -40,6 +42,7 @@ import com.example.bilimini.ui.components.DynamicCard
 import com.example.bilimini.ui.components.PageBanner
 import com.example.bilimini.ui.components.RemoteImage
 import com.example.bilimini.ui.components.VideoCard
+import com.example.bilimini.ui.screen.dynamic.DynamicDetailHolder
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -50,14 +53,27 @@ fun UserSpaceScreen(
     onBack: () -> Unit,
     onOpenVideo: (String) -> Unit,
     onOpenUserSpace: (Long) -> Unit,
+    onOpenDetail: (DynamicItem) -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(true) }
     var profile by remember { mutableStateOf<UserProfile?>(null) }
+
+    // Videos state
     var videos by remember { mutableStateOf<List<VideoSummary>>(emptyList()) }
-    var dynamics by remember { mutableStateOf<List<DynamicItem>>(emptyList()) }
+    var videoPage by remember { mutableIntStateOf(1) }
+    var loadingMoreVideos by remember { mutableStateOf(false) }
+    var hasMoreVideos by remember { mutableStateOf(true) }
     var videoMessage by remember { mutableStateOf<String?>(null) }
+
+    // Dynamics state
+    var dynamics by remember { mutableStateOf<List<DynamicItem>>(emptyList()) }
+    var dynamicsOffset by remember { mutableStateOf<String?>(null) }
+    var loadingMoreDynamics by remember { mutableStateOf(false) }
+    var hasMoreDynamics by remember { mutableStateOf(true) }
     var dynamicMessage by remember { mutableStateOf<String?>(null) }
+
+    val listState = rememberLazyListState()
 
     LaunchedEffect(mid) {
         loading = true
@@ -67,12 +83,62 @@ fun UserSpaceScreen(
             val dynamicsJob = async { repository.fetchUserDynamicItems(mid) }
 
             profile = profileJob.await()
-            videos = videosJob.await()
-            dynamics = dynamicsJob.await()
+
+            val fetchedVideos = videosJob.await()
+            videos = fetchedVideos
+            videoMessage = if (fetchedVideos.isEmpty()) "暂时没有读到这个用户的视频内容。" else null
+
+            val (fetchedDynamics, nextOff) = dynamicsJob.await()
+            dynamics = fetchedDynamics
+            dynamicsOffset = nextOff
+            dynamicMessage = if (fetchedDynamics.isEmpty()) "暂时没有读到这个用户的动态，可能需要更完整的登录态。" else null
         }
-        videoMessage = if (videos.isEmpty()) "暂时没有读到这个用户的视频内容。" else null
-        dynamicMessage = if (dynamics.isEmpty()) "暂时没有读到这个用户的动态，可能需要更完整的登录态。" else null
         loading = false
+    }
+
+    // Infinite scroll: videos
+    LaunchedEffect(listState, selectedTab) {
+        if (selectedTab != 0) return@LaunchedEffect
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible to layoutInfo.totalItemsCount
+        }.collect { (lastVisible, totalItems) ->
+            if (!loadingMoreVideos && hasMoreVideos && lastVisible >= totalItems - 3 && totalItems > 0) {
+                loadingMoreVideos = true
+                val nextPage = videoPage + 1
+                val result = repository.fetchUserVideos(mid, nextPage)
+                if (result.isNotEmpty()) {
+                    videoPage = nextPage
+                    videos = videos + result
+                } else {
+                    hasMoreVideos = false
+                }
+                loadingMoreVideos = false
+            }
+        }
+    }
+
+    // Infinite scroll: dynamics
+    LaunchedEffect(listState, selectedTab) {
+        if (selectedTab != 1) return@LaunchedEffect
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible to layoutInfo.totalItemsCount
+        }.collect { (lastVisible, totalItems) ->
+            if (!loadingMoreDynamics && hasMoreDynamics && lastVisible >= totalItems - 3 && totalItems > 0) {
+                loadingMoreDynamics = true
+                val (result, nextOff) = repository.fetchUserDynamicItems(mid, dynamicsOffset)
+                if (result.isNotEmpty()) {
+                    dynamicsOffset = nextOff
+                    dynamics = dynamics + result
+                } else {
+                    hasMoreDynamics = false
+                }
+                loadingMoreDynamics = false
+            }
+        }
     }
 
     if (loading) {
@@ -86,6 +152,7 @@ fun UserSpaceScreen(
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -94,7 +161,7 @@ fun UserSpaceScreen(
             PageBanner(
                 title = profile?.name ?: "用户主页",
                 trailing = {
-                    TextButton(onClick = onBack) {
+                    Button(onClick = onBack) {
                         Text("返回")
                     }
                 },
@@ -133,6 +200,18 @@ fun UserSpaceScreen(
                     onClick = { onOpenVideo(video.bvid) },
                 )
             }
+            if (loadingMoreVideos) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
         } else {
             if (dynamicMessage != null) {
                 item {
@@ -146,13 +225,29 @@ fun UserSpaceScreen(
             items(dynamics, key = { it.id }) { item ->
                 DynamicCard(
                     item = item,
-                    onClick = (item.bvid ?: item.origin?.bvid)?.let { bvid ->
-                        { onOpenVideo(bvid) }
+                    onClick = {
+                        if (item.bvid != null || item.origin?.bvid != null) {
+                            onOpenVideo(item.bvid ?: item.origin!!.bvid!!)
+                        } else {
+                            onOpenDetail(item)
+                        }
                     },
                     onAvatarClick = item.authorMid.takeIf { it > 0L }?.let { authorMid ->
                         { onOpenUserSpace(authorMid) }
                     },
                 )
+            }
+            if (loadingMoreDynamics) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
             }
         }
     }

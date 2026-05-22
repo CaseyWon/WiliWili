@@ -15,4 +15,5 @@ sealed class AppDestination(val route: String) {
     data object Player : AppDestination("player/{bvid}") {
         fun createRoute(bvid: String): String = "player/$bvid"
     }
+    data object DynamicDetail : AppDestination("dynamic_detail")
 }

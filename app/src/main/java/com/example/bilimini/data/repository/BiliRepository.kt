@@ -19,6 +19,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.longOrNull
 
 class BiliRepository(
@@ -77,30 +80,40 @@ class BiliRepository(
             url = url,
             authenticated = true,
         ) ?: return emptyList()
-        return payload.dataObject()
+        val items = payload.dataObject()
             ?.arrayValue("items")
             .orEmpty()
             .mapNotNull(::parseDynamicItem)
+        // Enrich items with blank text (e.g. DRAW items without desc in feed API)
+        if (page == 1 && items.isNotEmpty()) {
+            return enrichDynamicItems(items)
+        }
+        return items
     }
 
-    suspend fun fetchUserDynamicItems(mid: Long): List<DynamicItem> {
+    suspend fun fetchUserDynamicItems(mid: Long, offset: String? = null): Pair<List<DynamicItem>, String?> {
         if (mid <= 0L) {
-            return emptyList()
+            return Pair(emptyList(), null)
+        }
+        val params = mutableMapOf("host_mid" to mid.toString())
+        if (!offset.isNullOrBlank()) {
+            params["offset"] = offset
         }
         val url = apiClient.buildUrl(
             base = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space",
-            params = mapOf(
-                "host_mid" to mid.toString(),
-            ),
+            params = params,
         )
         val payload = apiClient.getJson(
             url = url,
             authenticated = true,
-        ) ?: return emptyList()
-        return payload.dataObject()
-            ?.arrayValue("items")
+        ) ?: return Pair(emptyList(), null)
+        val data = payload.dataObject() ?: return Pair(emptyList(), null)
+        val items = data.arrayValue("items")
             .orEmpty()
             .mapNotNull(::parseDynamicItem)
+        val enriched = enrichDynamicItems(items)
+        val nextOffset = data.stringValue("offset")
+        return Pair(enriched, nextOffset)
     }
 
     suspend fun searchVideos(
@@ -144,6 +157,7 @@ class BiliRepository(
             coverUrl = normalizeUrl(data.stringValue("pic").orEmpty()),
             author = data.objectValue("owner")?.stringValue("name").orEmpty(),
             ownerMid = data.objectValue("owner")?.longValue("mid") ?: 0L,
+            authorAvatar = normalizeUrl(data.objectValue("owner")?.stringValue("face").orEmpty()),
             durationSeconds = durationSeconds,
             durationText = formatDuration(durationSeconds),
             publishedText = formatUnixTime(data.longValue("pubdate")),
@@ -373,6 +387,39 @@ class BiliRepository(
         )
     }
 
+    suspend fun enrichDynamicDetail(idStr: String): DynamicItem? {
+        val url = apiClient.buildUrl(
+            base = "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail",
+            params = mapOf("id" to idStr, "features" to "itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote"),
+        )
+        val payload = apiClient.getJson(url = url, authenticated = true) ?: return null
+        val data = payload.dataObject() ?: return null
+        val item = data.objectValue("item") ?: return null
+        return parseDynamicItem(item)
+    }
+
+    private suspend fun enrichDynamicItems(items: List<DynamicItem>): List<DynamicItem> {
+        val needEnrich = items.filter { it.text.isBlank() }
+        if (needEnrich.isEmpty()) return items
+        return coroutineScope {
+            needEnrich.map { item ->
+                async {
+                    enrichDynamicDetail(item.id)?.let { enriched ->
+                        item.copy(
+                            text = enriched.text,
+                            title = enriched.title.ifBlank { item.title },
+                            images = enriched.images.ifEmpty { item.images },
+                            coverUrl = enriched.coverUrl.ifBlank { item.coverUrl },
+                        )
+                    } ?: item
+                }
+            }.awaitAll().let { enrichedList ->
+                val enrichedById = enrichedList.associateBy { it.id }
+                items.map { enrichedById[it.id] ?: it }
+            }
+        }
+    }
+
     private fun parseDynamicItem(element: JsonElement): DynamicItem? {
         val item = element as? JsonObject ?: return null
         val modules = item.objectValue("modules")
@@ -394,6 +441,7 @@ class BiliRepository(
             coverUrl = content.coverUrl,
             badge = content.badge,
             bvid = content.bvid,
+            images = content.images,
             origin = content.origin,
         )
     }
@@ -420,6 +468,11 @@ class BiliRepository(
         val dynamic = modules?.objectValue("module_dynamic")
         val major = dynamic?.objectValue("major")
         val descText = extractDynamicText(dynamic?.objectValue("desc"))
+        // Broad fallback: try to get text directly from item top-level fields
+        val itemTextFallback = listOfNotNull(
+            item.stringValue("content"),
+            item.stringValue("text"),
+        ).firstOrNull { it.isNotBlank() }?.let(::decodeHtml).orEmpty()
         val type = item.stringValue("type")
         val badge = mapDynamicType(type, major?.stringValue("type"))
         val archive = major?.objectValue("archive")
@@ -445,23 +498,39 @@ class BiliRepository(
                 bvid = archive.stringValue("bvid"),
             )
 
-            draw != null -> DynamicContent(
-                title = "发布了图文动态",
-                text = firstNotBlank(descText, extractDrawText(draw), "这是一条图文动态"),
-                coverUrl = normalizeUrl(
-                    (draw.arrayValue("items").firstOrNull() as? JsonObject)?.stringValue("src").orEmpty(),
-                ),
-                badge = badge ?: "图文",
-                bvid = null,
-            )
+            draw != null -> {
+                val drawItems = draw.arrayValue("items")
+                val drawText = firstNotBlank(descText, extractDrawText(draw), itemTextFallback, "")
+                DynamicContent(
+                    title = drawText.take(80),
+                    text = drawText,
+                    coverUrl = normalizeUrl(
+                        (drawItems.firstOrNull() as? JsonObject)?.stringValue("src").orEmpty(),
+                    ),
+                    badge = badge ?: "图文",
+                    bvid = null,
+                    images = drawItems.mapNotNull { item ->
+                        normalizeUrl((item as? JsonObject)?.stringValue("src").orEmpty())
+                            .takeIf { it.isNotBlank() }
+                    },
+                )
+            }
 
-            opus != null -> DynamicContent(
-                title = decodeHtml(opus.stringValue("title")).ifBlank { "发布了图文动态" },
-                text = firstNotBlank(descText, extractOpusSummary(opus), "这是一条图文动态"),
-                coverUrl = normalizeUrl(extractOpusCover(opus)),
-                badge = badge ?: "图文",
-                bvid = null,
-            )
+            opus != null -> {
+                val opusText = firstNotBlank(descText, extractOpusSummary(opus), itemTextFallback, "")
+                DynamicContent(
+                    title = decodeHtml(opus.stringValue("title")).orEmpty().takeIf { it.isNotBlank() }
+                        ?: opusText.take(80),
+                    text = opusText,
+                    coverUrl = normalizeUrl(extractOpusCover(opus)),
+                    badge = badge ?: "图文",
+                    bvid = null,
+                    images = opus.arrayValue("pics").mapNotNull { pic ->
+                        normalizeUrl((pic as? JsonObject)?.stringValue("url").orEmpty())
+                            .takeIf { it.isNotBlank() }
+                    },
+                )
+            }
 
             article != null -> DynamicContent(
                 title = decodeHtml(article.stringValue("title")).ifBlank { "发布了专栏" },
@@ -534,8 +603,8 @@ class BiliRepository(
             )
 
             else -> DynamicContent(
-                title = badge ?: "动态",
-                text = firstNotBlank(descText, "打开查看动态详情"),
+                title = "",
+                text = firstNotBlank(descText, itemTextFallback, "打开查看动态详情"),
                 coverUrl = "",
                 badge = badge,
                 bvid = null,
@@ -580,22 +649,32 @@ class BiliRepository(
     }
 
     private fun extractDrawText(draw: JsonObject): String {
-        return draw.arrayValue("items")
+        val fromItems = draw.arrayValue("items")
             .mapNotNull { node ->
                 (node as? JsonObject)?.stringValue("desc")
             }
             .joinToString(separator = "\n")
             .let(::decodeHtml)
             .trim()
+        if (fromItems.isNotBlank()) return fromItems
+        // fallback: try content/description at draw root level
+        return decodeHtml(draw.stringValue("content") ?: draw.stringValue("text") ?: "").trim()
     }
 
     private fun extractOpusSummary(opus: JsonObject): String {
-        val summary = opus.objectValue("summary")
-        val text = decodeHtml(summary?.stringValue("text"))
-        if (text.isNotBlank()) {
-            return text
+        // try multiple possible text locations
+        val sources = listOfNotNull(
+            opus.stringValue("text"),
+            opus.objectValue("summary")?.stringValue("text"),
+            opus.objectValue("content")?.stringValue("text"),
+            opus.stringValue("sub_title"),
+        )
+        sources.firstOrNull { it.isNotBlank() }?.let {
+            return decodeHtml(it).trim()
         }
-        return summary?.arrayValue("rich_text_nodes")
+        // try rich text nodes in summary
+        return opus.objectValue("summary")
+            ?.arrayValue("rich_text_nodes")
             .orEmpty()
             .mapNotNull { node -> (node as? JsonObject)?.stringValue("text") }
             .joinToString(separator = "")
@@ -727,12 +806,13 @@ class BiliRepository(
         val BV_REGEX = Regex("""BV[0-9A-Za-z]+""")
     }
 
-    private data class DynamicContent(
-        val title: String,
-        val text: String,
-        val coverUrl: String,
-        val badge: String?,
-        val bvid: String?,
-        val origin: DynamicOrigin? = null,
-    )
+	    private data class DynamicContent(
+	        val title: String,
+	        val text: String,
+	        val coverUrl: String,
+	        val badge: String?,
+	        val bvid: String?,
+	        val images: List<String> = emptyList(),
+	        val origin: DynamicOrigin? = null,
+	    )
 }

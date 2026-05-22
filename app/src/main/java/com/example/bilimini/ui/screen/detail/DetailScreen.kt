@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -31,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -53,6 +56,7 @@ fun DetailScreen(
     repository: BiliRepository,
     onBack: () -> Unit,
     onPlayClick: () -> Unit,
+    onOpenUserSpace: (Long) -> Unit,
 ) {
     var detail by remember { mutableStateOf<VideoDetail?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -83,7 +87,7 @@ fun DetailScreen(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("\u89c6\u9891\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25")
-                TextButton(onClick = { onBack() }) {
+                Button(onClick = { onBack() }) {
                     Text("\u8fd4\u56de")
                 }
             }
@@ -98,6 +102,7 @@ fun DetailScreen(
                 detail = d,
                 onBack = onBack,
                 onPlayClick = onPlayClick,
+                onOpenUserSpace = onOpenUserSpace,
             )
         }
     }
@@ -109,6 +114,7 @@ private fun DetailContent(
     detail: VideoDetail,
     onBack: () -> Unit,
     onPlayClick: () -> Unit,
+    onOpenUserSpace: (Long) -> Unit,
 ) {
     var inlinePlaying by rememberSaveable(bvid) { mutableStateOf(false) }
 
@@ -118,7 +124,7 @@ private fun DetailContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            TextButton(
+            Button(
                 onClick = onBack,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
@@ -155,16 +161,32 @@ private fun DetailContent(
                     text = detail.title,
                     style = MaterialTheme.typography.titleLarge,
                 )
-                Text(
-                    text = "\u4f5c\u8005\uff1a${detail.author}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "\u53d1\u5e03\u65f6\u95f4\uff1a${detail.publishedText}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    modifier = Modifier
+                        .clickable(enabled = detail.ownerMid > 0L) { onOpenUserSpace(detail.ownerMid) },
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RemoteImage(
+                        imageUrl = detail.authorAvatar,
+                        contentDescription = detail.author,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape),
+                    )
+                    Column {
+                        Text(
+                            text = detail.author,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "\u53d1\u5e03\u4e8e ${detail.publishedText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
         item {

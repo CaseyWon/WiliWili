@@ -11,6 +11,7 @@ data class DynamicItem(
     val coverUrl: String,
     val badge: String?,
     val bvid: String? = null,
+    val images: List<String> = emptyList(),
     val origin: DynamicOrigin? = null,
 )
 

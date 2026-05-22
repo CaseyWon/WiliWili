@@ -9,6 +9,7 @@ data class VideoDetail(
     val coverUrl: String,
     val author: String,
     val ownerMid: Long,
+    val authorAvatar: String,
     val durationSeconds: Long,
     val durationText: String,
     val publishedText: String,

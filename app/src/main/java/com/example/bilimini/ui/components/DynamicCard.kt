@@ -183,6 +183,18 @@ fun DynamicCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
+                } ?: item.images.takeIf { it.isNotEmpty() }?.let {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                    ) {
+                        Text(
+                            text = "\u67e5\u770b\u56fe\u6587\u8be6\u60c5",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
                 }
             }
         }

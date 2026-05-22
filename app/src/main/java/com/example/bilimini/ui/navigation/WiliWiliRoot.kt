@@ -32,6 +32,7 @@ import androidx.navigation.navArgument
 import com.example.bilimini.AppContainer
 import com.example.bilimini.ui.screen.auth.LoginScreen
 import com.example.bilimini.ui.screen.detail.DetailScreen
+import com.example.bilimini.ui.screen.dynamic.DynamicDetailScreen
 import com.example.bilimini.ui.screen.dynamic.DynamicScreen
 import com.example.bilimini.ui.screen.feed.FeedScreen
 import com.example.bilimini.ui.screen.feed.FeedScreenState
@@ -127,9 +128,19 @@ fun WiliWiliRoot(container: AppContainer) {
                         onOpenVideo = { bvid ->
                             navController.navigate(AppDestination.Detail.createRoute(bvid))
                         },
+                        onOpenDetail = { item ->
+                            com.example.bilimini.ui.screen.dynamic.DynamicDetailHolder.item = item
+                            navController.navigate(AppDestination.DynamicDetail.route)
+                        },
                         onOpenUserSpace = { mid ->
                             navController.navigate(AppDestination.UserSpace.createRoute(mid))
                         },
+                    )
+                }
+                composable(AppDestination.DynamicDetail.route) {
+                    DynamicDetailScreen(
+                        repository = container.repository,
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(AppDestination.Search.route) {
@@ -169,6 +180,10 @@ fun WiliWiliRoot(container: AppContainer) {
                         onOpenUserSpace = { targetMid ->
                             navController.navigate(AppDestination.UserSpace.createRoute(targetMid))
                         },
+                        onOpenDetail = { item ->
+                            com.example.bilimini.ui.screen.dynamic.DynamicDetailHolder.item = item
+                            navController.navigate(AppDestination.DynamicDetail.route)
+                        },
                     )
                 }
                 composable(
@@ -188,6 +203,9 @@ fun WiliWiliRoot(container: AppContainer) {
                         onBack = { navController.popBackStack() },
                         onPlayClick = {
                             navController.navigate(AppDestination.Player.createRoute(bvid))
+                        },
+                        onOpenUserSpace = { targetMid ->
+                            navController.navigate(AppDestination.UserSpace.createRoute(targetMid))
                         },
                     )
                 }

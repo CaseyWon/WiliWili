@@ -39,6 +39,7 @@ fun DynamicScreen(
     sessionManager: SessionManager,
     onLoginClick: () -> Unit,
     onOpenVideo: (String) -> Unit,
+    onOpenDetail: (DynamicItem) -> Unit,
     onOpenUserSpace: (Long) -> Unit,
 ) {
     val sessionState by sessionManager.sessionState.collectAsState()
@@ -144,8 +145,10 @@ fun DynamicScreen(
         items(items, key = { it.id }) { item ->
             DynamicCard(
                 item = item,
-                onClick = (item.bvid ?: item.origin?.bvid)?.let { bvid ->
-                    { onOpenVideo(bvid) }
+                onClick = if (item.bvid != null || item.origin?.bvid != null) {
+                    { onOpenVideo(item.bvid ?: item.origin!!.bvid!!) }
+                } else {
+                    { onOpenDetail(item) }
                 },
                 onAvatarClick = item.authorMid.takeIf { it > 0L }?.let { mid ->
                     { onOpenUserSpace(mid) }
