@@ -1,3 +1,48 @@
 <resources>
     <string name="app_name">WiliWili</string>
+
+    <!-- Navigation tabs -->
+    <string name="tab_home">首页</string>
+    <string name="tab_dynamic">动态</string>
+    <string name="tab_search">搜索</string>
+    <string name="tab_profile">我的</string>
+
+    <!-- General UI -->
+    <string name="btn_back">返回</string>
+    <string name="btn_exit_fullscreen">退出全屏</string>
+    <string name="btn_refresh">刷新</string>
+    <string name="btn_refreshing">刷新中</string>
+    <string name="btn_search">搜索</string>
+    <string name="btn_searching">搜索中</string>
+    <string name="btn_go_login">去登录</string>
+    <string name="btn_switch_batch">换一批</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_search">请输入视频关键词</string>
+    <string name="placeholder_author">匿名 UP</string>
+    <string name="placeholder_author_default">Bilibili 用户</string>
+    <string name="placeholder_no_title">无标题</string>
+
+    <!-- Error & status messages -->
+    <string name="error_image_load_failed">图片加载失败</string>
+    <string name="error_dynamic_unavailable">动态内容不可用</string>
+    <string name="error_no_recommendation">暂时没有拿到推荐内容，请稍后再试。</string>
+    <string name="error_no_search_results">没有找到结果，或者当前接口暂时不可用。</string>
+    <string name="error_no_user_videos">暂时没有读到这个用户的视频内容。</string>
+    <string name="error_no_user_dynamics">暂时没有读到这个用户的动态，可能需要更完整的登录态。</string>
+    <string name="error_no_dynamic_content">暂时没有读到动态内容，可能是登录态或接口返回发生了变化。</string>
+    <string name="msg_login_for_dynamic">登录后可以查看更完整的动态内容。</string>
+
+    <!-- User space -->
+    <string name="tab_videos">视频</string>
+    <string name="tab_dynamics">动态</string>
+    <string name="title_user_space">用户主页</string>
+
+    <!-- Page titles -->
+    <string name="title_feed">首页推荐</string>
+    <string name="title_search">搜索</string>
+    <string name="title_dynamic">动态</string>
+
+    <!-- Player -->
+    <string name="player_view_count">播放 %s</string>
 </resources>

@@ -28,8 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.bilimini.R
 import com.example.bilimini.data.model.DynamicItem
 import com.example.bilimini.data.repository.BiliRepository
 import com.example.bilimini.ui.components.ImageViewer
@@ -59,7 +61,7 @@ fun DynamicDetailScreen(
     val item = enrichedItem ?: holderItem
     if (item == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("动态内容不可用", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.error_dynamic_unavailable), style = MaterialTheme.typography.bodyLarge)
         }
         return
     }

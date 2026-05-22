@@ -30,6 +30,11 @@ class BiliApiClient(
 
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
             cookieStore.addAll(cookies)
+            val criticalNames = setOf("SESSDATA", "DedeUserID", "bili_jct")
+            if (cookies.any { it.name in criticalNames }) {
+                val header = cookieStore.joinToString("; ") { "${it.name}=${it.value}" }
+                sessionManager.saveCookies(listOf(header))
+            }
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> {

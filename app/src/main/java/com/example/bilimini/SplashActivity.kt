@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.bilimini.ui.theme.WiliWiliTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class SplashActivity : ComponentActivity() {
@@ -35,6 +36,7 @@ class SplashActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             delay(850)
+            if (!isActive) return@launch
             startActivity(Intent(this@SplashActivity, MainActivity::class.java))
             finish()
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)

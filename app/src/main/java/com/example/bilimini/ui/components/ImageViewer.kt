@@ -25,6 +25,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import androidx.compose.ui.res.stringResource
+import com.example.bilimini.R
+import coil.compose.AsyncImagePainter
 
 @Composable
 fun ImageViewer(
@@ -66,16 +69,25 @@ fun ImageViewer(
                         .crossfade(true)
                         .build(),
                 )
+                val hasError = painter.state is AsyncImagePainter.State.Error
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Image(
-                        painter = painter,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                    )
+                    if (hasError) {
+                        Text(
+                            text = stringResource(R.string.error_image_load_failed),
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                        )
+                    } else {
+                        Image(
+                            painter = painter,
+                            contentDescription = "图片 ${page + 1} / ${imageUrls.size}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
                 }
             }
 
@@ -87,7 +99,10 @@ fun ImageViewer(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable(onClick = onDismiss),
+                    .clickable(
+                        onClick = onDismiss,
+                        role = androidx.compose.ui.semantics.Role.Button,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

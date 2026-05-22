@@ -2,16 +2,27 @@ package com.example.bilimini.data.repository
 
 import androidx.core.text.HtmlCompat
 import com.example.bilimini.data.api.BiliApiClient
+import com.example.bilimini.data.model.CardResponse
 import com.example.bilimini.data.model.DanmakuItem
 import com.example.bilimini.data.model.DynamicItem
 import com.example.bilimini.data.model.DynamicOrigin
+import com.example.bilimini.data.model.NavResponse
 import com.example.bilimini.data.model.PlayableSource
 import com.example.bilimini.data.model.UserProfile
 import com.example.bilimini.data.model.VideoDetail
 import com.example.bilimini.data.model.VideoStat
 import com.example.bilimini.data.model.VideoSummary
+import com.example.bilimini.data.model.VideoSummaryResponse
+import com.example.bilimini.data.model.VideoViewResponse
+import com.example.bilimini.data.model.longValue
+import com.example.bilimini.data.model.toSearchSummary
+import com.example.bilimini.data.model.toUserVideoSummary
+import com.example.bilimini.data.model.toVideoSummary
 import com.example.bilimini.data.recommendation.HomeFeedRanker
 import com.example.bilimini.data.recommendation.RecommendationProfileStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -19,9 +30,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.longOrNull
 
 class BiliRepository(
@@ -29,6 +37,10 @@ class BiliRepository(
     private val homeFeedRanker: HomeFeedRanker,
     private val recommendationProfileStore: RecommendationProfileStore,
 ) {
+    private val json = kotlinx.serialization.json.Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
     private val videoDetailCache = mutableMapOf<String, VideoDetail>()
     suspend fun fetchHomeVideos(page: Int = 1): List<VideoSummary> {
         val recommendUrl = apiClient.buildUrl(
@@ -145,25 +157,24 @@ class BiliRepository(
             params = mapOf("bvid" to bvid),
         )
         val payload = apiClient.getJson(url) ?: return null
-        val data = payload.dataObject() ?: return null
-        val stat = data.objectValue("stat")
-        val durationSeconds = data.longValue("duration") ?: 0L
+        val data = json.decodeFromJsonElement(VideoViewResponse.serializer(), payload["data"] ?: return null)
+        val durationSeconds = data.duration
         val detail = VideoDetail(
-            bvid = data.stringValue("bvid").orEmpty(),
-            aid = data.longValue("aid") ?: 0L,
-            cid = data.longValue("cid") ?: 0L,
-            title = decodeHtml(data.stringValue("title")),
-            description = data.stringValue("desc").orEmpty().ifBlank { "No description yet." },
-            coverUrl = normalizeUrl(data.stringValue("pic").orEmpty()),
-            author = data.objectValue("owner")?.stringValue("name").orEmpty(),
-            ownerMid = data.objectValue("owner")?.longValue("mid") ?: 0L,
-            authorAvatar = normalizeUrl(data.objectValue("owner")?.stringValue("face").orEmpty()),
+            bvid = data.bvid,
+            aid = data.aid,
+            cid = data.cid,
+            title = decodeHtml(data.title),
+            description = data.desc.ifBlank { "No description yet." },
+            coverUrl = normalizeUrl(data.pic),
+            author = data.owner?.name.orEmpty(),
+            ownerMid = data.owner?.mid ?: 0L,
+            authorAvatar = normalizeUrl(data.owner?.face.orEmpty()),
             durationSeconds = durationSeconds,
             durationText = formatDuration(durationSeconds),
-            publishedText = formatUnixTime(data.longValue("pubdate")),
+            publishedText = formatUnixTime(data.pubdate),
             stats = listOf(
-                VideoStat("\u64ad\u653e", formatCount(stat?.longValue("view"))),
-                VideoStat("\u5f39\u5e55", formatCount(stat?.longValue("danmaku"))),
+                VideoStat("\u64ad\u653e", formatCount(data.stat?.longValue("view"))),
+                VideoStat("\u5f39\u5e55", formatCount(data.stat?.longValue("danmaku"))),
             ),
         )
         videoDetailCache[bvid] = detail
@@ -179,18 +190,17 @@ class BiliRepository(
             url = "https://api.bilibili.com/x/web-interface/nav",
             authenticated = true,
         ) ?: return null
-        val data = payload.dataObject() ?: return null
-        val isLogin = data.primitive("isLogin")?.booleanOrNull ?: false
-        if (!isLogin) {
+        val data = json.decodeFromJsonElement(NavResponse.serializer(), payload["data"] ?: return null)
+        if (!data.isLogin) {
             return null
         }
         return UserProfile(
-            mid = data.longValue("mid") ?: 0L,
-            name = data.stringValue("uname").orEmpty(),
-            avatarUrl = normalizeUrl(data.stringValue("face").orEmpty()),
-            level = data.objectValue("level_info")?.primitive("current_level")?.contentOrNull?.toIntOrNull(),
-            sign = data.stringValue("sign"),
-            coins = data.primitive("money")?.doubleOrNull,
+            mid = data.mid,
+            name = data.uname,
+            avatarUrl = normalizeUrl(data.face),
+            level = data.level_info?.current_level,
+            sign = null,
+            coins = data.money,
         )
     }
 
@@ -203,13 +213,14 @@ class BiliRepository(
             params = mapOf("mid" to mid.toString()),
         )
         val payload = apiClient.getJson(url) ?: return null
-        val card = payload.dataObject()?.objectValue("card") ?: return null
+        val cardData = json.decodeFromJsonElement(CardResponse.serializer(), payload["data"] ?: return null)
+        val card = cardData.card ?: return null
         return UserProfile(
-            mid = card.stringValue("mid")?.toLongOrNull() ?: mid,
-            name = decodeHtml(card.stringValue("name")).ifBlank { "Bilibili 用户" },
-            avatarUrl = normalizeUrl(card.stringValue("face").orEmpty()),
-            level = card.objectValue("level_info")?.primitive("current_level")?.contentOrNull?.toIntOrNull(),
-            sign = decodeHtml(card.stringValue("sign")),
+            mid = card.mid?.toLongOrNull() ?: mid,
+            name = decodeHtml(card.name).ifBlank { "Bilibili 用户" },
+            avatarUrl = normalizeUrl(card.face),
+            level = card.level_info?.current_level,
+            sign = card.sign?.let(::decodeHtml),
             coins = null,
         )
     }
@@ -356,35 +367,14 @@ class BiliRepository(
     }
 
     private fun parseVideoSummary(element: JsonElement): VideoSummary? {
-        val item = element as? JsonObject ?: return null
-        val durationSeconds = item.longValue("duration")
-        val playCount = item.objectValue("stat")?.longValue("view")
-        return VideoSummary(
-            bvid = item.stringValue("bvid").orEmpty(),
-            title = decodeHtml(item.stringValue("title")),
-            author = item.objectValue("owner")?.stringValue("name").orEmpty(),
-            coverUrl = normalizeUrl(item.stringValue("pic").orEmpty()),
-            durationText = formatDuration(durationSeconds ?: 0L),
-            playText = formatCount(playCount),
-            badge = item.stringValue("rcmd_reason"),
-            durationSeconds = durationSeconds,
-            playCount = playCount,
-        )
+        val item = json.decodeFromJsonElement(VideoSummaryResponse.serializer(), element)
+        val summary = item.toVideoSummary(::decodeHtml, ::normalizeUrl, ::formatDuration, ::formatCount)
+        return summary.takeIf { it.bvid.isNotBlank() }
     }
 
     private fun parseSearchSummary(element: JsonElement): VideoSummary? {
-        val item = element as? JsonObject ?: return null
-        return VideoSummary(
-            bvid = item.stringValue("bvid").orEmpty(),
-            title = decodeHtml(item.stringValue("title")),
-            author = item.stringValue("author").orEmpty(),
-            coverUrl = normalizeUrl(item.stringValue("pic").orEmpty()),
-            durationText = item.stringValue("duration").orEmpty(),
-            playText = item.stringValue("play").orEmpty().ifBlank { "--" },
-            badge = item.stringValue("typename"),
-            durationSeconds = parseDurationText(item.stringValue("duration").orEmpty()),
-            playCount = parseCountText(item.stringValue("play")),
-        )
+        val item = json.decodeFromJsonElement(VideoSummaryResponse.serializer(), element)
+        return item.toSearchSummary().takeIf { it.bvid.isNotBlank() }
     }
 
     suspend fun enrichDynamicDetail(idStr: String): DynamicItem? {
@@ -447,20 +437,8 @@ class BiliRepository(
     }
 
     private fun parseUserVideoSummary(element: JsonElement): VideoSummary? {
-        val item = element as? JsonObject ?: return null
-        val durationText = item.stringValue("length").orEmpty()
-        val playValue = item.longValue("play") ?: item.stringValue("play")?.toLongOrNull()
-        return VideoSummary(
-            bvid = item.stringValue("bvid").orEmpty(),
-            title = decodeHtml(item.stringValue("title")),
-            author = decodeHtml(item.stringValue("author")).ifBlank { "UP 主" },
-            coverUrl = normalizeUrl(item.stringValue("pic").orEmpty()),
-            durationText = durationText.ifBlank { formatDuration(item.longValue("length") ?: 0L) },
-            playText = formatCount(playValue),
-            badge = item.stringValue("created")?.let { "最新发布" },
-            durationSeconds = parseDurationText(durationText),
-            playCount = playValue,
-        )
+        val item = json.decodeFromJsonElement(VideoSummaryResponse.serializer(), element)
+        return item.toUserVideoSummary(::decodeHtml, ::normalizeUrl).takeIf { it.bvid.isNotBlank() }
     }
 
     private fun parseDynamicContent(item: JsonObject): DynamicContent {

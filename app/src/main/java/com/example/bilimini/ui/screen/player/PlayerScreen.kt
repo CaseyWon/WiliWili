@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -37,6 +38,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.AspectRatioFrameLayout
+import com.example.bilimini.R
 import com.example.bilimini.data.model.PlayableSource
 import com.example.bilimini.data.repository.BiliRepository
 import com.example.bilimini.ui.components.BiliPlayerView
@@ -161,7 +163,7 @@ fun PlayerScreen(
                     .statusBarsPadding()
                     .padding(12.dp),
             ) {
-                Text("退出全屏")
+                Text(stringResource(R.string.btn_exit_fullscreen))
             }
         }
 

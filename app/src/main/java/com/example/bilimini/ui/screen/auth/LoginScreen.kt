@@ -62,7 +62,7 @@ fun LoginScreen(
                 WebView(context).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
-                    settings.javaScriptCanOpenWindowsAutomatically = true
+                    settings.javaScriptCanOpenWindowsAutomatically = false
                     settings.loadsImagesAutomatically = true
                     settings.useWideViewPort = true
                     settings.loadWithOverviewMode = true

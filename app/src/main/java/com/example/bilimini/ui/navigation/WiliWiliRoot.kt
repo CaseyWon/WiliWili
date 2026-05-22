@@ -22,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.example.bilimini.R
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -55,23 +57,23 @@ fun WiliWiliRoot(container: AppContainer) {
     val bottomItems = listOf(
         BottomNavItem(
             route = AppDestination.Feed.route,
-            label = "首页",
-            icon = { Icon(Icons.Rounded.Home, contentDescription = "首页") },
+            label = stringResource(R.string.tab_home),
+            icon = { Icon(Icons.Rounded.Home, contentDescription = stringResource(R.string.tab_home)) },
         ),
         BottomNavItem(
             route = AppDestination.Dynamic.route,
-            label = "动态",
-            icon = { Icon(Icons.Rounded.DynamicFeed, contentDescription = "动态") },
+            label = stringResource(R.string.tab_dynamic),
+            icon = { Icon(Icons.Rounded.DynamicFeed, contentDescription = stringResource(R.string.tab_dynamic)) },
         ),
         BottomNavItem(
             route = AppDestination.Search.route,
-            label = "搜索",
-            icon = { Icon(Icons.Rounded.Search, contentDescription = "搜索") },
+            label = stringResource(R.string.tab_search),
+            icon = { Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.tab_search)) },
         ),
         BottomNavItem(
             route = AppDestination.Profile.route,
-            label = "我的",
-            icon = { Icon(Icons.Rounded.AccountCircle, contentDescription = "我的") },
+            label = stringResource(R.string.tab_profile),
+            icon = { Icon(Icons.Rounded.AccountCircle, contentDescription = stringResource(R.string.tab_profile)) },
         ),
     )
     val showBottomBar = currentDestination?.route in bottomItems.map { it.route }
