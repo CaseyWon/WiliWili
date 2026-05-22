@@ -1,86 +1,49 @@
-# WiliWili
+<p align="center">
+  <img src="docs/header.png" width="600" alt="WiliWili"/>
+</p>
 
-轻量级 Bilibili 视频播放 Android 客户端，个人学习与日常使用。Kotlin + Jetpack Compose + Material3 构建。
+<p align="center">
+  <a href="#功能">功能</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#技术栈">技术栈</a> ·
+  <a href="#架构">架构</a> ·
+  <a href="#数据源">数据源</a> ·
+  <a href="#许可">许可</a>
+</p>
 
-## 功能一览
+<p align="center">
+  <img src="https://img.shields.io/badge/Kotlin-2.0-blueviolet?logo=kotlin" alt="Kotlin"/>
+  <img src="https://img.shields.io/badge/minSdk-26-brightgreen" alt="minSdk 26"/>
+  <img src="https://img.shields.io/badge/targetSdk-36-brightgreen" alt="targetSdk 36"/>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"/>
+</p>
 
-| 页面 | 功能 |
-|---|---|
-| **首页** | 推荐/热门视频流，无限滚动，自动加载更多 |
-| **动态** | 用户关注动态时间线，无限滚动（需登录） |
-| **搜索** | 关键词搜索，无限滚动加载更多结果 |
-| **详情** | 视频封面/标题/描述/统计，ExoPlayer 内嵌播放，一键全屏 |
-| **全屏播放** | ExoPlayer 横屏沉浸式播放，手势控制系统栏 |
-| **个人** | 登录后可查看个人资料 |
-| **用户空间** | 查看指定 UP 主的视频列表 |
-| **登录** | WebView 加载官方登录页，自动提取 Cookie 加密存储 |
+---
 
-## 技术栈
+## 功能
 
-| 层 | 选型 |
-|---|---|
-| 语言 | Kotlin |
-| UI | Jetpack Compose + Material3 |
-| 导航 | Navigation Compose（淡入淡出/滑入滑出过渡） |
-| 网络 | OkHttp 4.12（内置 CookieJar） |
-| 序列化 | kotlinx.serialization |
-| 视频播放 | Media3 ExoPlayer（音视频分离流合并播放） |
-| 图片加载 | Coil |
-| 安全存储 | EncryptedSharedPreferences |
-| WebView | 官方登录页 & Cookie 提取 |
+- **首页推荐** — 推荐与热门双数据源，支持无限滚动
+- **用户动态** — 关注动态时间线，图文内容自动富化显示原文（需登录）
+- **视频搜索** — 关键词搜索，结果列表无限加载
+- **视频详情** — 封面、标题、UP 主信息、播放量统计，支持内嵌播放与一键全屏
+- **全屏播放** — ExoPlayer 横屏沉浸式播放，音视频分离流合并
+- **用户主页** — 查看 UP 主视频与动态，支持 Tab 切换和无限滚动
+- **动态详情** — 图文动态完整展示，通过 Bilibili 详情接口获取富化内容
+- **WebView 登录** — 加载官方登录页，自动提取并加密存储 Cookie
 
-## 项目结构
+## 快速开始
 
-```
-com.example.bilimini/
-├── MainActivity.kt              # 入口 Activity
-├── SplashActivity.kt            # 开屏（splashscreen API）
-├── WiliWiliApplication.kt       # Application 初始化
-├── AppContainer.kt              # 依赖容器
-├── data/
-│   ├── api/
-│   │   └── BiliApiClient.kt     # OkHttp 封装，CookieJar，WBI 签名
-│   ├── model/                   # 数据模型（VideoSummary, VideoDetail, PlayableSource, DynamicItem 等）
-│   ├── recommendation/          # 首页推荐排序算法 & 用户画像
-│   └── repository/
-│       └── BiliRepository.kt    # 数据仓库（首页/动态/搜索/详情/播放等）
-├── session/
-│   ├── SessionManager.kt        # Cookie 加密存储 & 管理
-│   └── SessionState.kt
-└── ui/
-    ├── components/              # 通用组件（VideoCard, DynamicCard, PageBanner, RemoteImage, BiliPlayerView）
-    ├── navigation/
-    │   ├── AppDestination.kt    # 路由定义
-    │   └── WiliWiliRoot.kt      # 根导航 + 底部导航栏
-    ├── screen/
-    │   ├── feed/                # 首页推荐（无限流）
-    │   ├── dynamic/             # 用户动态（无限流）
-    │   ├── search/              # 视频搜索（无限流）
-    │   ├── detail/              # 视频详情 + 内嵌播放
-    │   ├── player/              # 全屏 ExoPlayer
-    │   ├── profile/             # 个人中心
-    │   ├── auth/                # WebView 登录
-    │   └── space/               # 用户空间
-    └── theme/                   # Material3 主题、颜色、字体
+```shell
+# Debug 构建
+./gradlew assembleDebug
+
+# 发布签名构建（需配置 keystore）
+./gradlew assembleRelease
 ```
 
-## 数据源
+Debug APK 输出至 `app/build/outputs/apk/debug/app-debug.apk`。
 
-- 所有内容来自 Bilibili 官方网页端接口
-- 首页：推荐 feed + 热门 popular 双接口兜底
-- 播放：先尝试 API 获取 DASH 流，失败则从 HTML 页面解析
-- 用户空间：WBI 签名接口
-- 接口变更可能导致功能异常
-
-## 构建
-
-```powershell
-.\gradlew.bat assembleDebug
-```
-
-APK 输出：`app/build/outputs/apk/debug/app-debug.apk`
-
-发布签名版需在项目根目录创建 `keystore.properties`：
+发布签名构建需要在项目根目录创建 `keystore.properties`：
 
 ```properties
 storeFile=../your-keystore.jks
@@ -89,6 +52,42 @@ storePassword=xxx
 keyPassword=xxx
 ```
 
+## 技术栈
+
+| Category | Choice |
+|---|---|
+| 语言 | Kotlin |
+| UI 框架 | Jetpack Compose + Material3 |
+| 导航 | Navigation Compose |
+| 网络 | OkHttp 4.12（CookieJar + WBI 签名） |
+| 序列化 | kotlinx.serialization |
+| 视频播放 | Media3 ExoPlayer（DASH 音视频分离流） |
+| 图片加载 | Coil |
+| 安全存储 | EncryptedSharedPreferences |
+| 登录 | WebView + Cookie 自动提取 |
+
+## 架构
+
+采用单模块分层架构，职责清晰：
+
+- **UI 层** — Compose 屏幕与组件，通过回调与导航驱动页面流转
+- **Repository 层** — 封装所有数据获取逻辑，解耦 API 与 UI
+- **API 层** — OkHttp 客户端封装，统一处理 Cookie、WBI 签名、UA
+- **Session 层** — 登录态加密存储与管理
+
+页面导航由 Navigation Compose 统一编排，支持自定义过渡动画。
+
+## 数据源
+
+内容来自 Bilibili 官方网页端开放接口：
+
+- **首页** — 推荐 Feed + 热门 Popular 双接口兜底
+- **动态** — 聚合动态 Feed API，图文项通过 Detail API 补充原文
+- **播放** — 优先接口获取 DASH 流，失败回退 HTML 页面解析
+- **用户空间** — WBI 签名接口
+
+> 接口行为可能随 Bilibili 前端更新而变化。
+
 ## 许可
 
-MIT License，详见 [LICENSE](LICENSE)。
+[MIT License](LICENSE) © 2025 CaseyWon
