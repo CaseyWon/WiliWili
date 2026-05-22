@@ -91,4 +91,4 @@ keyPassword=xxx
 
 ## 许可
 
-仅供个人学习与交流，禁止商业用途。
+MIT License，详见 [LICENSE](LICENSE)。
