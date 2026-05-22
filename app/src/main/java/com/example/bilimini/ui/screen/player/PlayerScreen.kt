@@ -161,7 +161,7 @@ fun PlayerScreen(
                     .statusBarsPadding()
                     .padding(12.dp),
             ) {
-                Text("\u9000\u51fa\u5168\u5c4f")
+                Text("退出全屏")
             }
         }
 

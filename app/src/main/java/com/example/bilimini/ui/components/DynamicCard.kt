@@ -15,6 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +33,7 @@ fun DynamicCard(
     onAvatarClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    var viewingImageUrl by remember { mutableStateOf<String?>(null) }
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -99,7 +104,8 @@ fun DynamicCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(14.dp)),
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { viewingImageUrl = item.coverUrl },
                 ) {
                     RemoteImage(
                         imageUrl = item.coverUrl,
@@ -145,7 +151,8 @@ fun DynamicCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(16f / 9f)
-                                    .clip(RoundedCornerShape(12.dp)),
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { viewingImageUrl = origin.coverUrl },
                             ) {
                                 RemoteImage(
                                     imageUrl = origin.coverUrl,
@@ -198,5 +205,15 @@ fun DynamicCard(
                 }
             }
         }
+    }
+
+    viewingImageUrl?.let { url ->
+        val images = item.images.ifEmpty { listOf(url) }
+        val page = images.indexOf(url).coerceAtLeast(0)
+        ImageViewer(
+            imageUrls = images,
+            initialPage = page,
+            onDismiss = { viewingImageUrl = null },
+        )
     }
 }

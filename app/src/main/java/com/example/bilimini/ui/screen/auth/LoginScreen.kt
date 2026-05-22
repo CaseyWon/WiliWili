@@ -71,20 +71,6 @@ fun LoginScreen(
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     webChromeClient = WebChromeClient()
                     webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(
-                            view: WebView?,
-                            request: android.webkit.WebResourceRequest?,
-                        ): Boolean {
-                            val url = request?.url?.toString() ?: return false
-                            if (!url.startsWith("https://passport.bilibili.com") &&
-                                !url.startsWith("https://account.bilibili.com")
-                            ) {
-                                onBack()
-                                return true
-                            }
-                            return false
-                        }
-
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             tryCaptureCookies()

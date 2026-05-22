@@ -1,5 +1,6 @@
 package com.example.bilimini.ui.screen.dynamic
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.bilimini.data.model.DynamicItem
 import com.example.bilimini.data.repository.BiliRepository
+import com.example.bilimini.ui.components.ImageViewer
 import com.example.bilimini.ui.components.RemoteImage
 
 object DynamicDetailHolder {
@@ -44,6 +46,7 @@ fun DynamicDetailScreen(
 ) {
     val holderItem = DynamicDetailHolder.item
     var enrichedItem by remember { mutableStateOf<DynamicItem?>(null) }
+    var viewingImageUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(holderItem?.id) {
         val id = holderItem?.id ?: return@LaunchedEffect
@@ -62,10 +65,6 @@ fun DynamicDetailScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Button(onClick = onBack) {
-            Text("返回")
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -121,18 +120,32 @@ fun DynamicDetailScreen(
             }
 
             item.images.forEachIndexed { index, imageUrl ->
-                RemoteImage(
-                    imageUrl = imageUrl,
-                    contentDescription = "图片 ${index + 1}",
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(14.dp)),
-                )
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { viewingImageUrl = imageUrl },
+                ) {
+                    RemoteImage(
+                        imageUrl = imageUrl,
+                        contentDescription = "图片 ${index + 1}",
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             // Spacer at bottom
             Box(modifier = Modifier.size(16.dp))
         }
+    }
+
+    viewingImageUrl?.let { url ->
+        val page = item.images.indexOf(url).coerceAtLeast(0)
+        ImageViewer(
+            imageUrls = item.images,
+            initialPage = page,
+            onDismiss = { viewingImageUrl = null },
+        )
     }
 }

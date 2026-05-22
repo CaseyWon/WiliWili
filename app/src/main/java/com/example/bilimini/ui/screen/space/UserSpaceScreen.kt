@@ -160,11 +160,6 @@ fun UserSpaceScreen(
         item {
             PageBanner(
                 title = profile?.name ?: "用户主页",
-                trailing = {
-                    Button(onClick = onBack) {
-                        Text("返回")
-                    }
-                },
             )
         }
         item {

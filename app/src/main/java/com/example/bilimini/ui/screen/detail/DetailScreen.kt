@@ -85,12 +85,7 @@ fun DetailScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("\u89c6\u9891\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25")
-                Button(onClick = { onBack() }) {
-                    Text("\u8fd4\u56de")
-                }
-            }
+            Text("\u89c6\u9891\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25")
         }
 
         else -> {
@@ -123,14 +118,6 @@ private fun DetailContent(
         contentPadding = PaddingValues(bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Button(
-                onClick = onBack,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            ) {
-                Text("\u8fd4\u56de")
-            }
-        }
         item {
             if (inlinePlaying) {
                 InlinePlayerCard(
