@@ -7,7 +7,7 @@ import com.example.bilimini.data.recommendation.RecommendationProfileStore
 import com.example.bilimini.data.repository.BiliRepository
 import com.example.bilimini.session.SessionManager
 
-class BiliMiniApplication : Application() {
+class WiliWiliApplication : Application() {
     lateinit var appContainer: AppContainer
         private set
 

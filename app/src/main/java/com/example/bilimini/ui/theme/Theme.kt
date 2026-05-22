@@ -45,7 +45,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun BiliMiniTheme(
+fun WiliWiliTheme(
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(

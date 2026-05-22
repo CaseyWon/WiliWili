@@ -26,6 +26,7 @@ class BiliRepository(
     private val homeFeedRanker: HomeFeedRanker,
     private val recommendationProfileStore: RecommendationProfileStore,
 ) {
+    private val videoDetailCache = mutableMapOf<String, VideoDetail>()
     suspend fun fetchHomeVideos(page: Int = 1): List<VideoSummary> {
         val recommendUrl = apiClient.buildUrl(
             base = "https://api.bilibili.com/x/web-interface/index/top/feed/rcmd",
@@ -125,6 +126,7 @@ class BiliRepository(
     }
 
     suspend fun fetchVideoDetail(bvid: String): VideoDetail? {
+        videoDetailCache[bvid]?.let { return it }
         val url = apiClient.buildUrl(
             base = "https://api.bilibili.com/x/web-interface/view",
             params = mapOf("bvid" to bvid),
@@ -133,7 +135,7 @@ class BiliRepository(
         val data = payload.dataObject() ?: return null
         val stat = data.objectValue("stat")
         val durationSeconds = data.longValue("duration") ?: 0L
-        return VideoDetail(
+        val detail = VideoDetail(
             bvid = data.stringValue("bvid").orEmpty(),
             aid = data.longValue("aid") ?: 0L,
             cid = data.longValue("cid") ?: 0L,
@@ -150,6 +152,8 @@ class BiliRepository(
                 VideoStat("\u5f39\u5e55", formatCount(stat?.longValue("danmaku"))),
             ),
         )
+        videoDetailCache[bvid] = detail
+        return detail
     }
 
     fun recordVideoOpen(detail: VideoDetail) {

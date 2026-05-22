@@ -97,9 +97,9 @@ fun VideoCard(
                 )
                 Text(
                     text = buildString {
-                        append(video.author.ifBlank { "\u533f\u540d UP" })
-                        append("  \u2022  ")
-                        append("\u64ad\u653e ${video.playText}")
+                        append(video.author.ifBlank { "匿名 UP" })
+                        append("  •  ")
+                        append("播放 ${video.playText}")
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

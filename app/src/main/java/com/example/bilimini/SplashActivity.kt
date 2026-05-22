@@ -18,7 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.example.bilimini.ui.theme.BiliMiniTheme
+import com.example.bilimini.ui.theme.WiliWiliTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -28,7 +28,7 @@ class SplashActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            BiliMiniTheme {
+            WiliWiliTheme {
                 SplashScreen()
             }
         }

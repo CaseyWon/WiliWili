@@ -83,22 +83,25 @@ fun DetailScreen(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("\u89c6\u9891\u8be6\u60c5\u52a0\u8f7d\u5931\u8d25")
-                TextButton(onClick = onBack) {
+                TextButton(onClick = { onBack() }) {
                     Text("\u8fd4\u56de")
                 }
             }
         }
 
-        else -> DetailContent(
-            bvid = bvid,
-            repository = repository,
-            detail = detail!!,
-            onBack = onBack,
-            onPlayClick = onPlayClick,
-        )
+        else -> {
+            val d = detail
+            if (d == null) return@DetailScreen
+            DetailContent(
+                bvid = bvid,
+                repository = repository,
+                detail = d,
+                onBack = onBack,
+                onPlayClick = onPlayClick,
+            )
+        }
     }
 }
-
 @Composable
 private fun DetailContent(
     bvid: String,

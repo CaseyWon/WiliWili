@@ -1,11 +1,17 @@
 package com.example.bilimini.ui.screen.feed
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.bilimini.data.model.VideoSummary
@@ -23,72 +31,121 @@ import com.example.bilimini.ui.components.PageBanner
 import com.example.bilimini.ui.components.VideoCard
 import kotlinx.coroutines.launch
 
+class FeedScreenState {
+    var currentPage by mutableStateOf(1)
+    var videos by mutableStateOf<List<VideoSummary>>(emptyList())
+    var loading by mutableStateOf(true)
+    var loadingMore by mutableStateOf(false)
+    var hasMore by mutableStateOf(true)
+    var errorText by mutableStateOf<String?>(null)
+    val listState = LazyListState()
+}
+
 @Composable
 fun FeedScreen(
     repository: BiliRepository,
-    onOpenVideo: (String) -> Unit,
+    state: FeedScreenState,
+    onOpenVideo: (bvid: String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var currentPage by remember { mutableStateOf(1) }
-    var videos by remember { mutableStateOf<List<VideoSummary>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var errorText by remember { mutableStateOf<String?>(null) }
 
-    suspend fun load(page: Int) {
-        loading = true
-        errorText = null
-        val result = repository.fetchHomeVideos(page)
-        videos = result
-        errorText = if (result.isEmpty()) {
-            "\u6682\u65f6\u6ca1\u6709\u62ff\u5230\u63a8\u8350\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002"
-        } else {
-            null
+    // Initial load only if no cached data
+    LaunchedEffect(Unit) {
+        if (state.videos.isEmpty()) {
+            state.loading = true
+            state.errorText = null
+            val result = repository.fetchHomeVideos(1)
+            if (result.isEmpty()) {
+                state.hasMore = false
+                state.errorText = "暂时没有拿到推荐内容，请稍后再试。"
+            }
+            state.videos = result
+            state.loading = false
         }
-        loading = false
     }
 
-    LaunchedEffect(Unit) {
-        load(currentPage)
+    // Infinite scroll: auto-load next page when reaching the bottom
+    LaunchedEffect(state.listState) {
+        snapshotFlow {
+            val layoutInfo = state.listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible to layoutInfo.totalItemsCount
+        }.collect { (lastVisible, totalItems) ->
+            // Trigger when within 3 items of the end
+            if (!state.loadingMore && state.hasMore && lastVisible >= totalItems - 3 && totalItems > 0) {
+                state.loadingMore = true
+                val nextPage = state.currentPage + 1
+                val result = repository.fetchHomeVideos(nextPage)
+                if (result.isNotEmpty()) {
+                    state.currentPage = nextPage
+                    state.videos = state.videos + result
+                } else {
+                    state.hasMore = false
+                }
+                state.loadingMore = false
+            }
+        }
     }
 
     LazyColumn(
+        state = state.listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
             PageBanner(
-                title = "\u9996\u9875\u63a8\u8350",
+                title = "首页推荐",
                 showWordmark = true,
                 trailing = {
                     Button(
                         onClick = {
                             scope.launch {
-                                val nextPage = if (currentPage >= 8) 1 else currentPage + 1
-                                currentPage = nextPage
-                                load(nextPage)
+                                state.currentPage = 1
+                                state.hasMore = true
+                                state.loading = true
+                                state.errorText = null
+                                val result = repository.fetchHomeVideos(1)
+                                state.videos = result
+                                if (result.isEmpty()) {
+                                    state.hasMore = false
+                                    state.errorText = "暂时没有拿到推荐内容，请稍后再试。"
+                                }
+                                state.loading = false
                             }
                         },
                     ) {
-                        Text(if (loading) "\u5237\u65b0\u4e2d" else "\u6362\u4e00\u6279")
+                        Text(if (state.loading) "刷新中" else "换一批")
                     }
                 },
             )
         }
-        if (errorText != null) {
+        if (state.errorText != null && state.videos.isEmpty()) {
             item {
                 Text(
-                    text = errorText.orEmpty(),
+                    text = state.errorText.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
             }
         }
-        items(videos, key = { it.bvid }) { video ->
+        items(state.videos, key = { it.bvid }) { video ->
             VideoCard(
                 video = video,
                 onClick = { onOpenVideo(video.bvid) },
             )
+        }
+        if (state.loadingMore) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            }
         }
     }
 }
