@@ -1,11 +1,17 @@
 package com.example.bilimini.ui.screen.dynamic
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.bilimini.data.model.DynamicItem
@@ -35,45 +43,75 @@ fun DynamicScreen(
 ) {
     val sessionState by sessionManager.sessionState.collectAsState()
     val scope = rememberCoroutineScope()
-    var itemsState by remember { mutableStateOf<List<DynamicItem>>(emptyList()) }
+    val listState = rememberLazyListState()
+    var currentPage by remember { mutableStateOf(1) }
+    var items by remember { mutableStateOf<List<DynamicItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
+    var hasMore by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    suspend fun load() {
+    suspend fun refresh() {
         if (!sessionState.isLoggedIn) {
-            itemsState = emptyList()
-            message = "\u767b\u5f55\u540e\u53ef\u4ee5\u67e5\u770b\u66f4\u5b8c\u6574\u7684\u52a8\u6001\u5185\u5bb9\u3002"
+            items = emptyList()
+            currentPage = 1
+            hasMore = false
+            message = "登录后可以查看更完整的动态内容。"
             return
         }
+        currentPage = 1
+        hasMore = true
         loading = true
-        val result = repository.fetchDynamicItems()
-        itemsState = result
-        message = if (result.isEmpty()) {
-            "\u6682\u65f6\u6ca1\u6709\u8bfb\u5230\u52a8\u6001\u5185\u5bb9\uff0c\u53ef\u80fd\u662f\u767b\u5f55\u6001\u6216\u63a5\u53e3\u8fd4\u56de\u53d1\u751f\u4e86\u53d8\u5316\u3002"
-        } else {
-            null
+        message = null
+        items = repository.fetchDynamicItems(1)
+        if (items.isEmpty()) {
+            hasMore = false
+            message = "暂时没有读到动态内容，可能是登录态或接口返回发生了变化。"
         }
         loading = false
     }
 
     LaunchedEffect(sessionState.isLoggedIn) {
-        load()
+        refresh()
+    }
+
+    // Infinite scroll
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible to layoutInfo.totalItemsCount
+        }.collect { (lastVisible, totalItems) ->
+            if (!loadingMore && hasMore && sessionState.isLoggedIn && lastVisible >= totalItems - 3 && totalItems > 0) {
+                loadingMore = true
+                val nextPage = currentPage + 1
+                val result = repository.fetchDynamicItems(nextPage)
+                if (result.isNotEmpty()) {
+                    currentPage = nextPage
+                    items = items + result
+                } else {
+                    hasMore = false
+                }
+                loadingMore = false
+            }
+        }
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             PageBanner(
-                title = "\u52a8\u6001",
+                title = "动态",
                 showWordmark = true,
                 trailing = {
                     Button(
                         onClick = {
                             if (sessionState.isLoggedIn) {
-                                scope.launch { load() }
+                                scope.launch { refresh() }
                             } else {
                                 onLoginClick()
                             }
@@ -81,9 +119,9 @@ fun DynamicScreen(
                     ) {
                         Text(
                             if (sessionState.isLoggedIn) {
-                                if (loading) "\u5237\u65b0\u4e2d" else "\u5237\u65b0"
+                                if (loading) "刷新中" else "刷新"
                             } else {
-                                "\u53bb\u767b\u5f55"
+                                "去登录"
                             }
                         )
                     }
@@ -103,7 +141,7 @@ fun DynamicScreen(
                 )
             }
         }
-        items(itemsState, key = { it.id }) { item ->
+        items(items, key = { it.id }) { item ->
             DynamicCard(
                 item = item,
                 onClick = (item.bvid ?: item.origin?.bvid)?.let { bvid ->
@@ -113,6 +151,18 @@ fun DynamicScreen(
                     { onOpenUserSpace(mid) }
                 },
             )
+        }
+        if (loadingMore) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            }
         }
     }
 }

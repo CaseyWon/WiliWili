@@ -118,7 +118,7 @@ class BiliRepository(
                 "page" to page.toString(),
             ),
         )
-        val payload = apiClient.getJson(url) ?: return emptyList()
+        val payload = apiClient.getJson(url, authenticated = true) ?: return emptyList()
         return payload.dataObject()
             ?.arrayValue("result")
             .orEmpty()

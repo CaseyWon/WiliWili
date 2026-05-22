@@ -7,7 +7,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import okhttp3.Cookie
+import okhttp3.CookieJar
 import okhttp3.FormBody
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
@@ -22,9 +25,22 @@ class BiliApiClient(
         isLenient = true
     }
 
+    private val cookieJar = object : CookieJar {
+        private val cookieStore = mutableSetOf<Cookie>()
+
+        override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+            cookieStore.addAll(cookies)
+        }
+
+        override fun loadForRequest(url: HttpUrl): List<Cookie> {
+            return cookieStore.filter { it.matches(url) }
+        }
+    }
+
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
+        .cookieJar(cookieJar)
         .build()
     private var cachedWbiKey: String? = null
     private var cachedWbiKeyAtMs: Long = 0L
